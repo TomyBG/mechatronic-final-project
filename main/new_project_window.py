@@ -1,19 +1,18 @@
 import sys
 import os
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-root_dir = os.path.dirname(current_dir)
-if root_dir not in sys.path:
-    sys.path.append(root_dir)
-
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QDoubleSpinBox, QSpinBox, QPushButton,
-    QRadioButton, QButtonGroup, QGroupBox, QScrollArea, QGridLayout
+    QRadioButton, QButtonGroup, QGroupBox, QScrollArea, QGridLayout,
+    QMessageBox, QDialog
 )
 from PySide6.QtCore import Qt
 from main.results_window import ResultsWindow
 
+# --- UPDATED IMPORTS: Pointing to the 'projects' folder ---
+from projects.dialogs import SaveProjectDialog
+from projects.file_manager import ProjectFileManager
 
 GROUPBOX_STYLE = """
     QGroupBox {
@@ -34,7 +33,6 @@ GROUPBOX_STYLE = """
     }
 """
 
-
 class NewProjectWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -42,7 +40,13 @@ class NewProjectWindow(QMainWindow):
         self.setGeometry(100, 100, 800, 950)
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
         
+        # Initialize File Manager
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        root_dir = os.path.dirname(os.path.dirname(current_dir))
+        self.file_manager = ProjectFileManager(root_dir)
+
         self.results_window = None
+        self.water_inputs = [] # Initialize list
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -115,7 +119,7 @@ class NewProjectWindow(QMainWindow):
         outlets_with_num_layout.addStretch()
         outlets_layout.addLayout(outlets_with_num_layout)
         
-        # Set all helper (Only visible for Planters mode)
+        # Set all helper
         self.set_all_widget = QWidget()
         set_all_layout = QHBoxLayout(self.set_all_widget)
         set_all_layout.setContentsMargins(0, 0, 0, 0)
@@ -132,17 +136,8 @@ class NewProjectWindow(QMainWindow):
         set_all_btn = QPushButton("Set All")
         set_all_btn.setFixedWidth(100)
         set_all_btn.setStyleSheet("""
-            QPushButton {
-                font-size: 11px;
-                background-color: #2196F3;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #0b7dda;
-            }
+            QPushButton { font-size: 11px; background-color: #2196F3; color: white; border: none; border-radius: 4px; font-weight: bold; }
+            QPushButton:hover { background-color: #0b7dda; }
         """)
         set_all_btn.clicked.connect(self.set_all_outlets_flow)
         
@@ -152,50 +147,41 @@ class NewProjectWindow(QMainWindow):
         set_all_layout.addStretch()
         
         outlets_layout.addWidget(self.set_all_widget)
-        
         outlets_group.setLayout(outlets_layout)
         main_layout.addWidget(outlets_group)
         
-        # SECTION 3A: Direct Soil - Dripper Selection
+        # SECTION 3A: Direct Soil
         self.direct_soil_group = QGroupBox("3. Dripper Selection (Direct Soil)")
         self.direct_soil_group.setStyleSheet(GROUPBOX_STYLE)
         
-        # Using Grid Layout for the drippers table
         self.direct_soil_layout = QGridLayout()
         self.direct_soil_layout.setSpacing(10)
         self.direct_soil_layout.setContentsMargins(15, 15, 15, 15)
         
-        # Headers
         self.direct_soil_layout.addWidget(QLabel("Dripper Type"), 0, 0)
         self.direct_soil_layout.addWidget(QLabel("Quantity"), 0, 1)
         
-        # Store references to spinboxes
         self.dripper_qty_inputs = {} 
         standard_drippers = [1.0, 2.0, 4.0, 8.0]
         
         for i, flow in enumerate(standard_drippers):
             label = QLabel(f"{flow} L/h")
             label.setStyleSheet("font-weight: bold; font-size: 14px;")
-            
             spinbox = QSpinBox()
-            spinbox.setRange(0, 500) # Allow up to 500 drippers
+            spinbox.setRange(0, 500)
             spinbox.setValue(0)
             spinbox.setFixedWidth(100)
             spinbox.valueChanged.connect(self.update_summary)
-            
-            self.dripper_qty_inputs[flow] = spinbox
-            
+            self.dripper_qty_inputs[str(flow)] = spinbox
             self.direct_soil_layout.addWidget(label, i+1, 0)
             self.direct_soil_layout.addWidget(spinbox, i+1, 1)
 
-        # Add a stretch to keep it tight
         self.direct_soil_layout.setRowStretch(len(standard_drippers)+1, 1)
-        
         self.direct_soil_group.setLayout(self.direct_soil_layout)
         self.direct_soil_group.hide()
         main_layout.addWidget(self.direct_soil_group)
         
-        # SECTION 3B: Planters - Outlets Water
+        # SECTION 3B: Planters
         self.outlets_water_group = QGroupBox("3. Water Requirements (Per Outlet)")
         self.outlets_water_group.setStyleSheet(GROUPBOX_STYLE)
         self.outlets_water_layout = QVBoxLayout()
@@ -265,19 +251,8 @@ class NewProjectWindow(QMainWindow):
         self.start_btn = QPushButton("🚀 START CALCULATION")
         self.start_btn.setFixedHeight(50)
         self.start_btn.setStyleSheet("""
-            QPushButton {
-                font-size: 16px;
-                background-color: #FF9800;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                font-weight: bold;
-                margin-top: 10px;
-                margin-bottom: 10px;
-            }
-            QPushButton:hover {
-                background-color: #F57C00;
-            }
+            QPushButton { font-size: 16px; background-color: #FF9800; color: white; border: none; border-radius: 8px; font-weight: bold; margin-top: 10px; margin-bottom: 10px; }
+            QPushButton:hover { background-color: #F57C00; }
         """)
         self.start_btn.clicked.connect(self.open_results_window)
         main_layout.addWidget(self.start_btn)
@@ -298,30 +273,32 @@ class NewProjectWindow(QMainWindow):
         
         main_layout.addLayout(buttons_layout)
         
-        self.water_inputs = []
         self.on_outlet_type_changed()
 
     def on_outlet_type_changed(self):
-        # Clear existing dynamic inputs list
-        self.water_inputs = []
-        
+        # We handle clearing and visibility here
         if self.no_outlets_radio.isChecked():
             # Mode: Direct Soil
             self.direct_soil_group.show()
             self.outlets_water_group.hide()
             self.set_all_widget.hide()
+            
+            # Explicitly clear planters inputs so we don't save garbage
+            # Also helps avoid accessing deleted widgets
+            self.water_inputs = [] 
         else:
             # Mode: Planters
             self.direct_soil_group.hide()
             self.outlets_water_group.show()
             self.set_all_widget.show()
-            
-            # Rebuild planters input
             self._rebuild_planters_ui()
             
         self.update_summary()
 
     def _rebuild_planters_ui(self):
+        # *** FIX: Clear the list immediately so we don't hold references to soon-to-be-deleted widgets ***
+        self.water_inputs = [] 
+        
         # Clear layout
         while self.outlets_water_layout.count() > 0:
             item = self.outlets_water_layout.takeAt(0)
@@ -345,6 +322,8 @@ class NewProjectWindow(QMainWindow):
             layout.addWidget(spinbox)
             layout.addStretch()
             self.outlets_water_layout.addLayout(layout)
+            
+            # Add to list
             self.water_inputs.append((f"outlet_{i+1}", spinbox))
 
     def on_num_outlets_changed(self):
@@ -354,38 +333,137 @@ class NewProjectWindow(QMainWindow):
 
     def set_all_outlets_flow(self):
         val = self.set_all_flow_spinbox.value()
-        for label, spinbox in self.water_inputs:
+        for _, spinbox in self.water_inputs:
             spinbox.setValue(val)
         self.update_summary()
 
     def update_summary(self):
         length = self.length_spinbox.value()
         text = f"📋 Summary:\nLength: {length:.2f}m\n"
-        
         total_flow = 0.0
         
+        # Check specific mode to avoid reading from wrong/deleted widgets
         if self.no_outlets_radio.isChecked():
-            # Calculate from Dripper Quantities
             text += "Mode: Direct Soil (No Planters)\n"
             text += "Selected Drippers:\n"
             for flow, spinbox in self.dripper_qty_inputs.items():
                 qty = spinbox.value()
                 if qty > 0:
-                    subtotal = qty * flow
+                    subtotal = qty * float(flow)
                     total_flow += subtotal
                     text += f"  - {qty} x {flow} L/h = {subtotal} L/h\n"
         else:
-            # Calculate from Planters inputs
-            total_flow = sum([s.value() for _, s in self.water_inputs])
+            # Planters mode
+            if self.water_inputs: # Safety check
+                total_flow = sum([s.value() for _, s in self.water_inputs])
             
         text += f"\nTotal Flow: {total_flow:.2f} L/h"
         if length > 0:
              text += f" ({total_flow/length:.2f} L/m avg)"
-             
         self.summary_label.setText(text)
 
+    # --- SAVE Logic ---
     def save_project(self):
-        self.close()
+        # 1. Base Data
+        data = {
+            "length": self.length_spinbox.value(),
+            "connectors": {
+                "t": self.t_spinbox.value(),
+                "elbow": self.elbow_spinbox.value(),
+                "straight": self.straight_spinbox.value()
+            }
+        }
+        
+        # 2. Handle Dynamic Inputs Safely
+        if self.no_outlets_radio.isChecked():
+            data["mode"] = "direct_soil"
+            
+            # Save ONLY direct soil data
+            drippers = {}
+            for flow_key, spin in self.dripper_qty_inputs.items():
+                drippers[flow_key] = spin.value()
+            data["direct_soil_drippers"] = drippers
+            # Ensure planters data is marked empty or None to avoid confusion
+            data["planter_flows"] = []
+            
+        else:
+            data["mode"] = "planters"
+            data["num_outlets"] = self.outlets_spinbox.value()
+            
+            # Save ONLY planters data
+            # self.water_inputs should contain valid widgets now
+            flows = []
+            for _, spin in self.water_inputs:
+                try:
+                    flows.append(spin.value())
+                except RuntimeError:
+                    # If for some reason a widget is deleted, skip it
+                    pass
+            data["planter_flows"] = flows
+            data["direct_soil_drippers"] = {}
+
+        # 3. Save Dialog
+        dialog = SaveProjectDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            name = dialog.get_project_name()
+            if not name:
+                QMessageBox.warning(self, "Warning", "Project name cannot be empty.")
+                return
+            
+            success, msg = self.file_manager.save_project(name, data)
+            if success:
+                QMessageBox.information(self, "Success", msg)
+            else:
+                QMessageBox.critical(self, "Error", f"Failed to save: {msg}")
+
+    # --- LOAD Logic ---
+    def populate_from_data(self, data):
+        """Fills the UI elements with data from a loaded project"""
+        self.length_spinbox.blockSignals(True)
+        self.outlets_spinbox.blockSignals(True)
+        
+        try:
+            # 1. Base values
+            self.length_spinbox.setValue(data.get("length", 10.0))
+            conns = data.get("connectors", {})
+            self.t_spinbox.setValue(conns.get("t", 0))
+            self.elbow_spinbox.setValue(conns.get("elbow", 0))
+            self.straight_spinbox.setValue(conns.get("straight", 0))
+            
+            # 2. Mode selection
+            mode = data.get("mode", "planters")
+            
+            if mode == "direct_soil":
+                # Switch to Direct Soil
+                self.no_outlets_radio.setChecked(True) 
+                # (Signal will trigger on_outlet_type_changed -> clears water_inputs -> hides planters)
+                
+                # Populate drippers
+                saved_drippers = data.get("direct_soil_drippers", {})
+                for flow_key, qty in saved_drippers.items():
+                    if flow_key in self.dripper_qty_inputs:
+                        self.dripper_qty_inputs[flow_key].setValue(qty)
+            else:
+                # Switch to Planters
+                self.with_outlets_radio.setChecked(True)
+                
+                num_outlets = data.get("num_outlets", 5)
+                self.outlets_spinbox.setValue(num_outlets)
+                
+                # Force UI rebuild so we have the right number of spinboxes
+                self._rebuild_planters_ui() 
+                
+                # Now fill values
+                saved_flows = data.get("planter_flows", [])
+                for i, (_, spinbox) in enumerate(self.water_inputs):
+                    if i < len(saved_flows):
+                        spinbox.setValue(saved_flows[i])
+
+        finally:
+            self.length_spinbox.blockSignals(False)
+            self.outlets_spinbox.blockSignals(False)
+            # Ensure summary is accurate
+            self.update_summary()
 
     def open_results_window(self):
         if self.results_window is None:
@@ -405,25 +483,17 @@ class NewProjectWindow(QMainWindow):
         }
         
         if self.no_outlets_radio.isChecked():
-            # Mode: Direct Soil (Continuous)
             input_data['mode'] = 'continuous'
-            
-            # Calculate total flow from drippers
             total_flow = 0.0
             for flow, spinbox in self.dripper_qty_inputs.items():
-                total_flow += (flow * spinbox.value())
-            
+                total_flow += (float(flow) * spinbox.value())
             input_data['total_flow_lh'] = total_flow
-            
         else:
-            # Mode: Planters
             input_data['mode'] = 'planters'
             input_data['num_outlets'] = self.outlets_spinbox.value()
-            
             specific_flows = []
-            for label, spinbox in self.water_inputs:
+            for _, spinbox in self.water_inputs:
                 specific_flows.append(spinbox.value())
-            
             input_data['specific_flows'] = specific_flows
 
         self.results_window.perform_calculation(input_data)
