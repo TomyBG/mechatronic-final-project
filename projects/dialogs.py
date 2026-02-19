@@ -1,28 +1,30 @@
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QLabel, QLineEdit, 
-    QDialogButtonBox, QListWidget, QPushButton, QMessageBox
+    QDialog, QLabel, QLineEdit, QDialogButtonBox, 
+    QListWidget, QPushButton, QMessageBox
 )
 
 class SaveProjectDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Save Project")
+        # גודל חלון קבוע
         self.setFixedSize(400, 150)
         
-        layout = QVBoxLayout(self)
-        
-        lbl = QLabel("Enter Project Name:")
+        # כותרת
+        lbl = QLabel("Enter Project Name:", self)
         lbl.setStyleSheet("font-weight: bold;")
-        layout.addWidget(lbl)
+        lbl.setGeometry(20, 20, 360, 20)
         
-        self.name_input = QLineEdit()
+        # שורת קלט
+        self.name_input = QLineEdit(self)
         self.name_input.setPlaceholderText("e.g., Garden_Front_Yard")
-        layout.addWidget(self.name_input)
+        self.name_input.setGeometry(20, 50, 360, 30)
         
-        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        # כפתורי שמירה/ביטול מובנים של Qt
+        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel, self)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        buttons.setGeometry(20, 100, 360, 30)
 
     def get_project_name(self):
         return self.name_input.text().strip()
@@ -32,22 +34,25 @@ class LoadProjectDialog(QDialog):
     def __init__(self, projects_list, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Load Existing Project")
+        # גודל חלון קבוע
         self.setFixedSize(400, 500)
         
-        layout = QVBoxLayout(self)
-        
-        lbl = QLabel("Select a Project to Load:")
+        # כותרת
+        lbl = QLabel("Select a Project to Load:", self)
         lbl.setStyleSheet("font-weight: bold; font-size: 14px;")
-        layout.addWidget(lbl)
+        lbl.setGeometry(20, 20, 360, 20)
         
-        self.list_widget = QListWidget()
+        # רשימת הפרויקטים לבחירה
+        self.list_widget = QListWidget(self)
         self.list_widget.addItems(projects_list)
-        layout.addWidget(self.list_widget)
+        # גובה 380, כדי שיישאר בדיוק מקום לכפתור למטה
+        self.list_widget.setGeometry(20, 50, 360, 380) 
         
-        load_btn = QPushButton("Load Selected Project")
-        load_btn.setStyleSheet("background-color: #2196F3; color: white; font-weight: bold; padding: 10px;")
+        # כפתור טעינה
+        load_btn = QPushButton("Load Selected Project", self)
+        load_btn.setStyleSheet("background-color: #2196F3; color: white; font-weight: bold; padding: 10px; border-radius: 4px;")
         load_btn.clicked.connect(self.validate_selection)
-        layout.addWidget(load_btn)
+        load_btn.setGeometry(20, 440, 360, 40)
 
     def validate_selection(self):
         if not self.list_widget.currentItem():

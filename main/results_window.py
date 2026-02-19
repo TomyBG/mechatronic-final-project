@@ -3,7 +3,6 @@ import os
 import csv
 from datetime import datetime
 
-# --- NEW IMPORT FOR PDF ---
 from fpdf import FPDF
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -12,7 +11,7 @@ if root_dir not in sys.path:
     sys.path.append(root_dir)
 
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QLabel, QGroupBox, 
+    QMainWindow, QWidget, QLabel, QGroupBox, 
     QScrollArea, QTextEdit, QPushButton, QFileDialog, QMessageBox
 )
 from PySide6.QtCore import Qt, QUrl
@@ -28,13 +27,10 @@ try:
 except ImportError:
     IrrigationCalculator = None
 
-# --- PDF Class Helper ---
 class PDFReport(FPDF):
     def header(self):
-        # Set font
         self.set_font('Helvetica', 'B', 15)
-        # Title
-        self.set_text_color(44, 95, 45) # Dark Green #2c5f2d
+        self.set_text_color(44, 95, 45)
         self.cell(0, 10, 'Irrigation System Design Report', 0, 1, 'C')
         self.ln(5)
 
@@ -46,7 +42,7 @@ class PDFReport(FPDF):
 
     def chapter_title(self, label):
         self.set_font('Helvetica', 'B', 12)
-        self.set_fill_color(240, 248, 240) # Light Green background
+        self.set_fill_color(240, 248, 240) 
         self.set_text_color(44, 95, 45)
         self.cell(0, 8, f"  {label}", 0, 1, 'L', fill=True)
         self.ln(2)
@@ -62,12 +58,14 @@ class MplCanvas(FigureCanvasQTAgg):
         fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = fig.add_subplot(111)
         super(MplCanvas, self).__init__(fig)
+        if parent is not None:
+            self.setParent(parent)
 
 class ResultsWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Calculation Results")
-        self.setGeometry(150, 150, 700, 950)
+        self.setFixedSize(700, 700) 
         
         if IrrigationCalculator:
             self.calculator = IrrigationCalculator()
@@ -77,79 +75,112 @@ class ResultsWindow(QMainWindow):
         self.last_results = None
         self.last_inputs = None
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        self.setCentralWidget(scroll)
-        container = QWidget()
-        scroll.setWidget(container)
-        self.layout = QVBoxLayout(container)
+        self.scroll = QScrollArea(self)
+        self.scroll.setGeometry(0, 0, 700, 700)
+        self.scroll.setWidgetResizable(False) 
+        self.setCentralWidget(self.scroll)
         
-        title = QLabel("📊 Hydraulic Calculation Results")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #2c5f2d;")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.layout.addWidget(title)
+        self.container = QWidget()
+        self.scroll.setWidget(self.container)
+        
+        self.title = QLabel("📊 Hydraulic Calculation Results", self.container)
+        self.title.setStyleSheet("font-size: 20px; font-weight: bold; color: #2c5f2d;")
+        self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Graph Section
-        group_g = QGroupBox("Pressure Distribution")
-        group_g.setStyleSheet("QGroupBox { font-weight: bold; border: 2px solid #2c5f2d; margin-top: 10px; }")
-        vbox_g = QVBoxLayout()
-        self.canvas = MplCanvas(self, width=5, height=4, dpi=100)
-        vbox_g.addWidget(self.canvas)
-        group_g.setLayout(vbox_g)
-        self.layout.addWidget(group_g)
+        self.group_g = QGroupBox("Pressure Distribution", self.container)
+        self.group_g.setStyleSheet("QGroupBox { font-weight: bold; border: 2px solid #2c5f2d; margin-top: 10px; }")
+        
+        self.canvas = MplCanvas(self.group_g, width=5, height=4, dpi=100)
 
-        # Recommendations Section
-        group_d = QGroupBox("Recommendations")
-        group_d.setStyleSheet("QGroupBox { font-weight: bold; border: 2px solid #2c5f2d; margin-top: 10px; }")
-        self.results_label = QLabel("Waiting for data...")
+        self.group_d = QGroupBox("Recommendations", self.container)
+        self.group_d.setStyleSheet("QGroupBox { font-weight: bold; border: 2px solid #2c5f2d; margin-top: 10px; }")
+        
+        self.results_label = QLabel("Waiting for data...", self.group_d)
         self.results_label.setWordWrap(True)
-        self.planters_detail_text = QTextEdit()
+        self.results_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        
+        self.planters_label = QLabel("Planter Details:", self.group_d)
+        self.planters_label.setStyleSheet("font-weight: bold;")
+        
+        self.planters_detail_text = QTextEdit(self.group_d)
         self.planters_detail_text.setReadOnly(True)
-        self.planters_detail_text.setMaximumHeight(200)
-        
-        vbox_d = QVBoxLayout()
-        vbox_d.addWidget(self.results_label)
-        vbox_d.addWidget(QLabel("Planter Details:"))
-        vbox_d.addWidget(self.planters_detail_text)
-        group_d.setLayout(vbox_d)
-        self.layout.addWidget(group_d)
 
-        # --- EXPORT BUTTONS ---
-        
-        # CSV Button
-        self.export_csv_btn = QPushButton("📂 Export Data to Excel (CSV)")
-        self.export_csv_btn.setFixedHeight(45)
+        self.export_csv_btn = QPushButton("📂 Export Data to Excel (CSV)", self.container)
         self.export_csv_btn.setStyleSheet("""
             QPushButton {
-                background-color: #4CAF50; 
-                color: white; 
-                font-weight: bold; 
-                font-size: 14px;
-                border-radius: 6px;
-                margin-top: 15px;
+                background-color: #4CAF50; color: white; font-weight: bold; font-size: 14px; border-radius: 6px;
             }
             QPushButton:hover { background-color: #45a049; }
         """)
         self.export_csv_btn.clicked.connect(self.export_csv)
-        self.layout.addWidget(self.export_csv_btn)
         
-        # PDF Button
-        self.export_pdf_btn = QPushButton("📄 Export Professional Report (PDF)")
-        self.export_pdf_btn.setFixedHeight(45)
+        self.export_pdf_btn = QPushButton("📄 Export Professional Report (PDF)", self.container)
         self.export_pdf_btn.setStyleSheet("""
             QPushButton {
-                background-color: #D32F2F; 
-                color: white; 
-                font-weight: bold; 
-                font-size: 14px;
-                border-radius: 6px;
-                margin-top: 5px;
-                margin-bottom: 20px;
+                background-color: #D32F2F; color: white; font-weight: bold; font-size: 14px; border-radius: 6px;
             }
             QPushButton:hover { background-color: #B71C1C; }
         """)
         self.export_pdf_btn.clicked.connect(self.export_pdf)
-        self.layout.addWidget(self.export_pdf_btn)
+        
+        self._recalculate_positions(mode='continuous')
+
+    def _recalculate_positions(self, mode):
+        margin_x = 20
+        group_w = 640
+        y = 20
+        
+        self.title.setGeometry(margin_x, y, group_w, 30)
+        y += 50
+        
+        # --- Graph ---
+        group_g_height = 450
+        self.group_g.setGeometry(margin_x, y, group_w, group_g_height)
+        self.canvas.setGeometry(10, 30, group_w - 20, group_g_height - 40)
+        self.canvas.show()
+        y += group_g_height + 20
+        
+        # --- מנגנון גובה דינמי לטקסט ---
+        # מכריחים את הטקסט לקבל רוחב קבוע כדי שיידע מתי לשבור שורה
+        self.results_label.setFixedWidth(group_w - 30)
+        # מכריחים את התיבה להתאים את הגובה שלה לכמות הטקסט (כולל הטקסט האדום!)
+        self.results_label.adjustSize()
+        results_label_height = self.results_label.height()
+        
+        # נוודא שתמיד יש מינימום שטח כדי שלא ייראה צפוף מדי
+        if results_label_height < 100:
+            results_label_height = 100
+            
+        if mode == 'continuous':
+            self.planters_label.hide()
+            self.planters_detail_text.hide()
+            group_d_height = results_label_height + 50 # מקדם ביטחון של 50 פיקסלים בתוך התיבה
+            self.group_d.setGeometry(margin_x, y, group_w, group_d_height)
+            self.results_label.setGeometry(15, 30, group_w - 30, results_label_height)
+            y += group_d_height + 30
+        else:
+            self.planters_label.show()
+            self.planters_detail_text.show()
+            planters_text_height = 150
+            group_d_height = results_label_height + planters_text_height + 70
+            
+            self.group_d.setGeometry(margin_x, y, group_w, group_d_height)
+            self.results_label.setGeometry(15, 30, group_w - 30, results_label_height)
+            
+            current_group_y = 30 + results_label_height + 10
+            self.planters_label.setGeometry(15, current_group_y, group_w - 30, 20)
+            
+            current_group_y += 25
+            self.planters_detail_text.setGeometry(15, current_group_y, group_w - 30, planters_text_height)
+            
+            y += group_d_height + 30
+            
+        self.export_csv_btn.setGeometry(margin_x, y, group_w, 45)
+        y += 60
+        self.export_pdf_btn.setGeometry(margin_x, y, group_w, 45)
+        y += 65 
+        
+        self.container.setFixedSize(680, y)
 
     def perform_calculation(self, input_data):
         if not self.calculator:
@@ -183,6 +214,9 @@ class ResultsWindow(QMainWindow):
             self.update_report(res, mode)
             self.update_graph(res['graph_data'])
             
+            # --- מחשבים מחדש את המיקומים אחרי שהטקסט עודכן! ---
+            self._recalculate_positions(mode)
+            
         except Exception as e:
             self.results_label.setText(f"Error: {e}")
             import traceback
@@ -195,12 +229,10 @@ class ResultsWindow(QMainWindow):
         <hr>"""
         
         if mode == 'continuous':
-            self.planters_detail_text.hide()
             html += f"<p><b>Main Pipe:</b> {res.get('recommended_pipe_mm')} mm (Direct Soil Mode)</p>"
         else:
             html += f"<p><b>Main Pipe:</b> {res.get('recommended_main_pipe_mm')} mm</p>"
             html += f"<p><b>Spaghetti:</b> {res.get('recommended_planter_pipe')}</p>"
-            self.planters_detail_text.show()
             self.planters_detail_text.setText("\n".join(res.get('detailed_planters_list', [])))
             
         html += f"<hr><p style='color:red; font-size:14px'><b>REQUIRED INLET: {res.get('required_inlet_pressure_bar')} Bar</b></p>"
@@ -215,7 +247,10 @@ class ResultsWindow(QMainWindow):
             • Friction Factor (f): {debug.get('friction_f', 0):.4f}<br>
             </div>
             """
+        
+        # מעדכנים את הטקסט ומכריחים את הקופסה להסתדר עליו
         self.results_label.setText(html)
+        self.results_label.adjustSize()
 
     def update_graph(self, graph_data):
         x = graph_data['x']
@@ -235,7 +270,6 @@ class ResultsWindow(QMainWindow):
         self.canvas.draw()
 
     def export_csv(self):
-        """Original CSV export function"""
         if not self.last_results or not self.last_inputs:
             QMessageBox.warning(self, "No Data", "Please run a calculation first.")
             return
@@ -293,12 +327,10 @@ class ResultsWindow(QMainWindow):
             QMessageBox.critical(self, "Export Error", f"Failed to save CSV:\n{str(e)}")
 
     def export_pdf(self):
-        """Generates a styled PDF report"""
         if not self.last_results or not self.last_inputs:
             QMessageBox.warning(self, "No Data", "Please run a calculation first.")
             return
 
-        # 1. Ask for file location
         default_name = f"Irrigation_Report_{datetime.now().strftime('%Y-%m-%d_%H-%M')}.pdf"
         file_path, _ = QFileDialog.getSaveFileName(self, "Save PDF Report", default_name, "PDF Files (*.pdf)")
 
@@ -306,11 +338,9 @@ class ResultsWindow(QMainWindow):
             return
 
         try:
-            # 2. Generate temp graph image
             temp_img = os.path.join(root_dir, "temp_graph.png")
             self.canvas.figure.savefig(temp_img, dpi=150, bbox_inches='tight')
 
-            # 3. Create PDF
             pdf = PDFReport()
             pdf.add_page()
             
@@ -319,7 +349,6 @@ class ResultsWindow(QMainWindow):
             connectors = inp.get('connectors', {})
             mode = inp.get('mode', 'continuous')
             
-            # --- Project Info ---
             pdf.chapter_title("Project Overview")
             date_str = datetime.now().strftime("%d/%m/%Y %H:%M")
             info_text = (f"Date: {date_str}\n"
@@ -328,7 +357,6 @@ class ResultsWindow(QMainWindow):
                          f"Total Flow: {res.get('total_flow_lh')} L/h")
             pdf.chapter_body(info_text)
 
-            # --- Recommendations ---
             pdf.chapter_title("System Recommendations")
             
             pipe_size = res.get('recommended_pipe_mm') if mode == 'continuous' else res.get('recommended_main_pipe_mm')
@@ -341,16 +369,13 @@ class ResultsWindow(QMainWindow):
                  
             pdf.chapter_body(rec_text)
 
-            # --- Bill of Materials (Table) ---
             pdf.chapter_title("Bill of Materials (BOM)")
             
-            # Table Header
             pdf.set_font('Helvetica', 'B', 10)
             pdf.set_fill_color(200, 200, 200)
             pdf.cell(100, 7, "Item", 1, 0, 'L', fill=True)
             pdf.cell(40, 7, "Quantity", 1, 1, 'C', fill=True)
             
-            # Table Rows
             pdf.set_font('Helvetica', '', 10)
             
             items = [
@@ -369,15 +394,11 @@ class ResultsWindow(QMainWindow):
             
             pdf.ln(5)
 
-            # --- Graph Image ---
             pdf.chapter_title("Hydraulic Analysis Graph")
-            # Calculate width to center it
             pdf.image(temp_img, x=15, w=180)
 
-            # 4. Save
             pdf.output(file_path)
             
-            # 5. Cleanup and Open
             if os.path.exists(temp_img):
                 os.remove(temp_img)
                 
@@ -385,7 +406,6 @@ class ResultsWindow(QMainWindow):
 
         except Exception as e:
             QMessageBox.critical(self, "PDF Export Error", f"Failed to generate PDF:\n{str(e)}")
-            # Cleanup if failed
             if os.path.exists("temp_graph.png"):
                 try: os.remove("temp_graph.png")
                 except: pass

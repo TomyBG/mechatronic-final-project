@@ -1,8 +1,7 @@
 import sys
 import os
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-    QPushButton, QLabel, QMessageBox, QDialog
+    QMainWindow, QWidget, QPushButton, QLabel, QMessageBox, QDialog
 )
 from PySide6.QtCore import Qt
 
@@ -18,7 +17,9 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Garden Irrigation System Planning")
-        self.setGeometry(100, 100, 600, 400)
+        
+        # נעילת גודל החלון כדי שהמיקומים האבסולוטיים לא יישברו
+        self.setFixedSize(600, 400)
         
         # Initialize File Manager
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -29,48 +30,35 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
-        # Main layout
-        layout = QVBoxLayout(central_widget)
-        layout.setSpacing(20)
-        layout.setContentsMargins(30, 30, 30, 30)
-        
-        # Title
-        title = QLabel("Garden Irrigation System Planning")
+        # Title (X: 50, Y: 30, Width: 500, Height: 40)
+        title = QLabel("Garden Irrigation System Planning", central_widget)
         title.setStyleSheet("font-size: 24px; font-weight: bold; color: #2c5f2d;")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title)
+        title.setGeometry(50, 30, 500, 40)
         
-        # Subtitle
-        subtitle = QLabel("Design your garden irrigation system")
+        # Subtitle (X: 50, Y: 75, Width: 500, Height: 20)
+        subtitle = QLabel("Design your garden irrigation system", central_widget)
         subtitle.setStyleSheet("font-size: 12px; color: #666666;")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(subtitle)
+        subtitle.setGeometry(50, 75, 500, 20)
         
-        layout.addSpacing(30)
-        
-        buttons_layout = QVBoxLayout()
-        buttons_layout.setSpacing(15)
-        
-        self.new_project_btn = QPushButton("📋 New Project")
-        self.new_project_btn.setFixedHeight(60)
+        # New Project button (X: 100, Y: 140, Width: 400, Height: 60)
+        self.new_project_btn = QPushButton("📋 New Project", central_widget)
         self.new_project_btn.setStyleSheet("QPushButton { font-size: 14px; background-color: #4CAF50; color: white; border-radius: 5px; font-weight: bold; } QPushButton:hover { background-color: #45a049; }")
+        self.new_project_btn.setGeometry(100, 140, 400, 60)
         self.new_project_btn.clicked.connect(self.open_new_project)
-        buttons_layout.addWidget(self.new_project_btn)
         
-        self.saved_projects_btn = QPushButton("💾 Saved Projects")
-        self.saved_projects_btn.setFixedHeight(60)
+        # Saved Projects button (X: 100, Y: 220, Width: 400, Height: 60)
+        self.saved_projects_btn = QPushButton("💾 Saved Projects", central_widget)
         self.saved_projects_btn.setStyleSheet("QPushButton { font-size: 14px; background-color: #2196F3; color: white; border-radius: 5px; font-weight: bold; } QPushButton:hover { background-color: #0b7dda; }")
+        self.saved_projects_btn.setGeometry(100, 220, 400, 60)
         self.saved_projects_btn.clicked.connect(self.open_saved_projects)
-        buttons_layout.addWidget(self.saved_projects_btn)
         
-        self.about_btn = QPushButton("ℹ️ About")
-        self.about_btn.setFixedHeight(60)
+        # About button (X: 100, Y: 300, Width: 400, Height: 60)
+        self.about_btn = QPushButton("ℹ️ About", central_widget)
         self.about_btn.setStyleSheet("QPushButton { font-size: 14px; background-color: #FF9800; color: white; border-radius: 5px; font-weight: bold; } QPushButton:hover { background-color: #e68900; }")
+        self.about_btn.setGeometry(100, 300, 400, 60)
         self.about_btn.clicked.connect(self.open_about)
-        buttons_layout.addWidget(self.about_btn)
-        
-        layout.addLayout(buttons_layout)
-        layout.addStretch()
         
         self.about_window = None
         self.new_project_window = None
