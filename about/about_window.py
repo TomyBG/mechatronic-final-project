@@ -2,16 +2,13 @@
 About Window - Information about the application and developer
 """
 
-from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QLabel, QPushButton
-)
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QCursor
+from PySide6.QtWidgets import QMainWindow, QWidget, QLabel, QPushButton
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QCursor, QDesktopServices
 import webbrowser
 
-
 class ClickableLabel(QLabel):
-    """Clickable label that opens URLs"""
+    """Clickable label that opens URLs smoothly using Qt framework"""
     def __init__(self, text, url, parent=None):
         super().__init__(text, parent)
         self.url = url
@@ -29,12 +26,8 @@ class ClickableLabel(QLabel):
         """)
     
     def mousePressEvent(self, event):
-        """Open URL on click"""
-        if self.url.startswith("mailto:"):
-            import subprocess
-            subprocess.Popen(['start', self.url], shell=True)
-        else:
-            webbrowser.open(self.url)
+        """Open URL on click gracefully"""
+        QDesktopServices.openUrl(QUrl(self.url))
         super().mousePressEvent(event)
 
 

@@ -1,13 +1,36 @@
-import sqlite3
 import math
 import os
+import sys
+import itertools
+
+# הוספת תיקיית השורש לנתיב כדי שנוכל לייבא את מסד הנתונים
+current_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir = os.path.dirname(current_dir)
+if base_dir not in sys.path:
+    sys.path.append(base_dir)
+
+# יבוא מחלקת מסד הנתונים החדשה שלנו
+try:
+    from catalog.Database import Database
+except ImportError:
+    try:
+        from Database import Database
+    except ImportError:
+        from components.Database import Database
 
 class IrrigationCalculator:
     def __init__(self, db_path=None):
         if db_path is None:
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            base_dir = os.path.dirname(current_dir)
-            self.db_path = os.path.join(base_dir, "catalog", "components.db")
+            # מנסה למצוא את קובץ מסד הנתונים במיקומים האפשריים
+            path1 = os.path.join(base_dir, "catalog", "components.db")
+            path2 = os.path.join(base_dir, "components", "components.db")
+            
+            if os.path.exists(path1):
+                self.db_path = path1
+            elif os.path.exists(path2):
+                self.db_path = path2
+            else:
+                self.db_path = path1 # ברירת מחדל
         else:
             self.db_path = db_path
             
@@ -18,10 +41,6 @@ class IrrigationCalculator:
         self.K_ELBOW = 1.3
         self.K_TEE = 1.8
         self.K_CONNECTOR = 0.5
-        
-        self.PIPE_SPECS = {
-            16: 13.6, 20: 17.0, 25: 22.0, 32: 28.0, 50: 44.0
-        }
 
     def get_length_classification(self, length_m):
         lower = (int(length_m) // 10) * 10
@@ -32,7 +51,18 @@ class IrrigationCalculator:
         if length_m <= 60: nominal = 16
         elif length_m <= 100: nominal = 25
         else: nominal = 32
-        internal = self.PIPE_SPECS.get(nominal, nominal * 0.85)
+        
+        # התחברות ל-DB ושליפת הקוטר הפנימי המדויק לטובת חישובי מכניקת זורמים
+        db = Database(self.db_path)
+        pipe_data = db.get_pipe_by_diameter(nominal)
+        
+        if pipe_data:
+            # אינדקס 4 הוא ה- internal_diameter_mm כפי שהוגדר בטבלה
+            internal = pipe_data[4] 
+        else:
+            # מקדם גיבוי למקרה שהצינור לא קיים בטבלה
+            internal = nominal * 0.85 
+            
         return nominal, internal
 
     def _select_spaghetti_by_main(self, main_pipe_mm):
@@ -48,7 +78,6 @@ class IrrigationCalculator:
 
         best_combo = []
         min_diff = 999
-        import itertools
         
         for d in available_drippers:
             diff = abs(d - target_flow)
@@ -109,8 +138,6 @@ class IrrigationCalculator:
         return total_loss_bar, velocity, f, re
 
     def calculate_planters_scenario(self, length_m, num_planters, specific_flows_list, connectors):
-        print(f"DEBUG: Calculating Planters. List={specific_flows_list}")
-        
         nominal_dia, internal_dia = self._select_main_pipe_by_rules(length_m)
         spaghetti_type = self._select_spaghetti_by_main(nominal_dia)
         
@@ -182,14 +209,8 @@ class IrrigationCalculator:
         }
 
     def calculate_continuous_soil(self, length_m, total_flow_lh, connectors):
-        """
-        Calculates pressure loss for continuous soil / direct drippers.
-        Assumes uniform distribution of the Total Flow along the pipe length.
-        """
         nominal_dia, internal_dia = self._select_main_pipe_by_rules(length_m)
         
-        # Engineering assumption: Flow decreases linearly along the pipe
-        # We divide the pipe into small segments to simulate this integration
         segments = 50 
         segment_len = length_m / segments
         flow_drop_per_segment = total_flow_lh / segments

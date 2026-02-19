@@ -6,8 +6,7 @@ SQLite database for storing pipes, drippers, fittings, and other components
 import sqlite3
 import os
 
-
-class ComponentCatalog:
+class Database:
     """
     Manages the component database (pipes, drippers, fittings)
     """
@@ -181,4 +180,3 @@ class ComponentCatalog:
         """, (fitting_name, engineering_symbol, k_value_small, k_value_large, description))
         connection.commit()
         connection.close()
-
