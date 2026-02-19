@@ -3,13 +3,12 @@ import os
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QPushButton, QLabel, QMessageBox, QDialog
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 
 # Adjust imports based on your folder structure
 from about.about_window import AboutWindow
 from main.new_project_window import NewProjectWindow
-
-# --- UPDATED IMPORTS ---
 from projects.dialogs import LoadProjectDialog
 from projects.file_manager import ProjectFileManager
 
@@ -18,8 +17,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Garden Irrigation System Planning")
         
-        # נעילת גודל החלון כדי שהמיקומים האבסולוטיים לא יישברו
-        self.setFixedSize(600, 400)
+        # נעילת גודל החלון כדי שהמיקומים האבסולוטיים לא יישברו (הוגדל ל-480 עבור הכפתור הנוסף)
+        self.setFixedSize(600, 480)
         
         # Initialize File Manager
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -59,6 +58,12 @@ class MainWindow(QMainWindow):
         self.about_btn.setStyleSheet("QPushButton { font-size: 14px; background-color: #FF9800; color: white; border-radius: 5px; font-weight: bold; } QPushButton:hover { background-color: #e68900; }")
         self.about_btn.setGeometry(100, 300, 400, 60)
         self.about_btn.clicked.connect(self.open_about)
+
+        # Tutorial Video button (X: 100, Y: 380, Width: 400, Height: 60)
+        self.video_btn = QPushButton("🎬 Tutorial Video", central_widget)
+        self.video_btn.setStyleSheet("QPushButton { font-size: 14px; background-color: #9C27B0; color: white; border-radius: 5px; font-weight: bold; } QPushButton:hover { background-color: #7B1FA2; }")
+        self.video_btn.setGeometry(100, 380, 400, 60)
+        self.video_btn.clicked.connect(self.open_video)
         
         self.about_window = None
         self.new_project_window = None
@@ -92,3 +97,14 @@ class MainWindow(QMainWindow):
         if self.about_window is None:
             self.about_window = AboutWindow(self)
         self.about_window.show()
+
+    def open_video(self):
+        """Open the tutorial video using desktop services"""
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        root_dir = os.path.dirname(current_dir)
+        video_path = os.path.join(root_dir, "tutorial_video.mp4")
+        
+        if os.path.exists(video_path):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(video_path))
+        else:
+            QMessageBox.warning(self, "Video Not Found", f"Tutorial video not found.\nPlease ensure 'tutorial_video.mp4' is located in the main project folder.")
