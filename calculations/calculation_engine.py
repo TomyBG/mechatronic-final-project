@@ -8,28 +8,14 @@ base_dir = os.path.dirname(current_dir)
 if base_dir not in sys.path:
     sys.path.append(base_dir)
 
-# יבוא מחלקת מסד הנתונים החדשה שלנו
-try:
-    from catalog.Database import Database
-except ImportError:
-    try:
-        from Database import Database
-    except ImportError:
-        from components.Database import Database
+# יבוא ישיר וודאי של מחלקת מסד הנתונים מתיקיית catalog
+from catalog.Database import Database
 
 class IrrigationCalculator:
     def __init__(self, db_path=None):
         if db_path is None:
-            # מנסה למצוא את קובץ מסד הנתונים במיקומים האפשריים
-            path1 = os.path.join(base_dir, "catalog", "components.db")
-            path2 = os.path.join(base_dir, "components", "components.db")
-            
-            if os.path.exists(path1):
-                self.db_path = path1
-            elif os.path.exists(path2):
-                self.db_path = path2
-            else:
-                self.db_path = path1 # ברירת מחדל
+            # נתיב קשיח ודטרמיניסטי למסד הנתונים
+            self.db_path = os.path.join(base_dir, "catalog", "components.db")
         else:
             self.db_path = db_path
             

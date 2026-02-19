@@ -22,10 +22,8 @@ matplotlib.use('QtAgg')
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
-try:
-    from calculations.calculation_engine import IrrigationCalculator
-except ImportError:
-    IrrigationCalculator = None
+# ייבוא ישיר ודטרמיניסטי של מנוע החישוב
+from calculations.calculation_engine import IrrigationCalculator
 
 class PDFReport(FPDF):
     def header(self):
@@ -67,10 +65,8 @@ class ResultsWindow(QMainWindow):
         self.setWindowTitle("Calculation Results")
         self.setFixedSize(700, 700) 
         
-        if IrrigationCalculator:
-            self.calculator = IrrigationCalculator()
-        else:
-            self.calculator = None
+        # יצירת מופע של המנוע ישירות
+        self.calculator = IrrigationCalculator()
             
         self.last_results = None
         self.last_inputs = None
@@ -183,10 +179,6 @@ class ResultsWindow(QMainWindow):
         self.container.setFixedSize(680, y)
 
     def perform_calculation(self, input_data):
-        if not self.calculator:
-            self.results_label.setText("Error: Engine missing")
-            return
-
         self.last_inputs = input_data
         
         length = input_data.get('length', 10)
