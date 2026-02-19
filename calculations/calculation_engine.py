@@ -1,7 +1,6 @@
 import math
 import os
 import sys
-import itertools
 
 # הוספת תיקיית השורש לנתיב כדי שנוכל לייבא את מסד הנתונים
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -73,35 +72,44 @@ class IrrigationCalculator:
 
     def _calculate_dripper_combo(self, target_flow):
         available_drippers = [8.0, 4.0, 2.0, 1.0]
+        
+        # טיפול במקרה קצה של זרימה נמוכה מאוד
         if target_flow <= 1.0:
-            return "1x 1.0 L/h", 1.0
+            return "1x (1.0 L/h)", 1.0
 
-        best_combo = []
-        min_diff = 999
-        
-        for d in available_drippers:
-            diff = abs(d - target_flow)
+        best_combo = [1.0] # ערך התחלתי שרירותי
+        min_diff = abs(1.0 - target_flow)
+
+        # 1. בדיקת טפטפת בודדת
+        for d1 in available_drippers:
+            diff = abs(d1 - target_flow)
             if diff < min_diff:
                 min_diff = diff
-                best_combo = [d]
+                best_combo = [d1]
 
-        for combo in itertools.combinations_with_replacement(available_drippers, 2):
-            total = sum(combo)
-            diff = abs(total - target_flow)
-            if diff < min_diff:
-                min_diff = diff
-                best_combo = combo
-        
-        if min_diff > 0.5:
-            for combo in itertools.combinations_with_replacement(available_drippers, 3):
-                total = sum(combo)
+        # 2. בדיקת שילוב של 2 טפטפות
+        for d1 in available_drippers:
+            for d2 in available_drippers:
+                total = d1 + d2
                 diff = abs(total - target_flow)
                 if diff < min_diff:
                     min_diff = diff
-                    best_combo = combo
+                    best_combo = [d1, d2]
         
+        # 3. בדיקת שילוב של 3 טפטפות
+        for d1 in available_drippers:
+            for d2 in available_drippers:
+                for d3 in available_drippers:
+                    total = d1 + d2 + d3
+                    diff = abs(total - target_flow)
+                    if diff < min_diff:
+                        min_diff = diff
+                        best_combo = [d1, d2, d3]
+        
+        # יצירת הטקסט הסופי שיוצג למשתמש והחישוב של הזרימה בפועל
         actual_flow = sum(best_combo)
-        combo_str = "+".join([f"{d}" for d in best_combo])
+        combo_str = "+".join([str(d) for d in best_combo])
+        
         return f"{len(best_combo)}x ({combo_str} L/h)", actual_flow
 
     def _calc_velocity(self, flow_lh, internal_diameter_mm):
